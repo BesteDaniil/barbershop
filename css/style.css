@@ -276,15 +276,15 @@ section[id] { scroll-margin-top: 92px; }
 
 /* ===== Тултип (демо) ===== */
 .toast {
-  position: fixed; left: 50%; bottom: 26px; transform: translate(-50%, 24px);
-  z-index: 300; width: min(92vw, 440px);
+  position: fixed; left: 16px; right: 16px; bottom: 26px; margin: 0 auto; transform: translateY(24px);
+  z-index: 300; max-width: 440px;
   display: flex; align-items: center; gap: 13px;
   background: var(--surface-2); color: var(--text); border: 1px solid var(--line-2);
   padding: 15px 18px; border-radius: var(--radius); box-shadow: var(--shadow);
   font-size: 15px; line-height: 1.4; opacity: 0; visibility: hidden; pointer-events: none;
   transition: opacity .3s var(--ease), transform .3s var(--ease), visibility .3s;
 }
-.toast.show { opacity: 1; visibility: visible; transform: translate(-50%, 0); pointer-events: auto; }
+.toast.show { opacity: 1; visibility: visible; transform: translateY(0); pointer-events: auto; }
 .toast__ico { flex: none; width: 38px; height: 38px; border-radius: 8px; display: grid; place-items: center; background: var(--amber-dim); color: var(--amber); }
 .toast__ico svg { width: 22px; height: 22px; }
 .toast b { color: var(--amber); }
