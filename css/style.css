@@ -25,7 +25,7 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
-html { scroll-behavior: smooth; scroll-padding-top: 74px; overflow-x: clip; }
+html { scroll-behavior: smooth; overflow-x: clip; }
 
 body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
@@ -44,6 +44,9 @@ a { color: inherit; text-decoration: none; }
 h1, h2, h3, .logo { font-family: 'Oswald', 'Inter', sans-serif; }
 
 .section { padding: 100px 0; }
+
+/* Якоря не прячутся под липкой шапкой (высота 74px + запас) */
+section[id] { scroll-margin-top: 92px; }
 
 .eyebrow {
   display: inline-flex; align-items: center; gap: 10px;

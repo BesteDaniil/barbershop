@@ -99,22 +99,48 @@
     var phoneI = form.elements['phone'];
     var dateI = form.elements['date'];
 
-    function setError(input, show) {
+    var MONTHS = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+                  'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+
+    function pad(n) { return (n < 10 ? '0' : '') + n; }
+    function ymd(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+
+    // Границы даты: сегодня .. сегодня + 2 месяца (актуальны на момент загрузки)
+    var now = new Date();
+    var minDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    var maxDate = new Date(now.getFullYear(), now.getMonth() + 2, now.getDate());
+    dateI.min = ymd(minDate);
+    dateI.max = ymd(maxDate);
+
+    function setError(input, show, msg) {
       if (!input) return;
       input.classList.toggle('invalid', show);
       var err = form.querySelector('[data-error="' + input.name + '"]');
-      if (err) err.classList.toggle('show', show);
+      if (err) {
+        if (show && msg) err.textContent = msg;
+        err.classList.toggle('show', show);
+      }
     }
     [nameI, phoneI, dateI].forEach(function (inp) {
-      inp.addEventListener('input', function () { if (inp.classList.contains('invalid')) setError(inp, false); });
-      inp.addEventListener('change', function () { if (inp.classList.contains('invalid')) setError(inp, false); });
+      var clear = function () { if (inp.classList.contains('invalid')) setError(inp, false); };
+      inp.addEventListener('input', clear);
+      inp.addEventListener('change', clear);
     });
 
-    function formatDate(v) {
-      // YYYY-MM-DD -> DD.MM.YYYY
+    // Разбор даты с проверкой корректности (ловит мусор вроде 0055 года)
+    function parseDate(v) {
       var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v || '');
-      return m ? (m[3] + '.' + m[2] + '.' + m[1]) : v;
+      if (!m) return null;
+      var y = +m[1], mo = +m[2] - 1, day = +m[3];
+      var d = new Date(y, mo, day);
+      if (d.getFullYear() !== y || d.getMonth() !== mo || d.getDate() !== day) return null;
+      return d;
     }
+    function formatRu(v) {
+      var d = parseDate(v);
+      return d ? d.getDate() + ' ' + MONTHS[d.getMonth()] : v;
+    }
+    function hasLetter(s) { return /[a-zа-яё]/i.test(s); }
     function escapeHtml(s) {
       return String(s).replace(/[&<>"']/g, function (c) {
         return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
@@ -124,16 +150,26 @@
     form.addEventListener('submit', function (e) {
       e.preventDefault();
       var ok = true;
-      if (!nameI.value.trim()) { setError(nameI, true); ok = false; }
-      if ((phoneI.value.match(/\d/g) || []).length < 10) { setError(phoneI, true); ok = false; }
-      if (!dateI.value) { setError(dateI, true); ok = false; }
+
+      var nm = nameI.value.trim();
+      if (nm.length < 2 || !hasLetter(nm)) { setError(nameI, true, 'Введите имя — минимум 2 буквы'); ok = false; }
+
+      if ((phoneI.value.match(/\d/g) || []).length < 10) { setError(phoneI, true, 'Проверьте номер'); ok = false; }
+
+      var picked = parseDate(dateI.value);
+      if (!picked) {
+        setError(dateI, true, 'Выберите дату');
+        ok = false;
+      } else if (picked < minDate || picked > maxDate) {
+        setError(dateI, true, 'Дата — в пределах ближайших 2 месяцев');
+        ok = false;
+      }
+
       if (!ok) { var bad = form.querySelector('.invalid'); if (bad) bad.focus(); return; }
 
-      var nm = escapeHtml(nameI.value.trim());
-      var dt = escapeHtml(formatDate(dateI.value));
-      var tm = escapeHtml(form.elements['time'].value);
       document.getElementById('bookSuccessMsg').innerHTML =
-        'Готово, <b>' + nm + '</b>! Ждём вас <b>' + dt + '</b> в <b>' + tm + '</b>.';
+        'Готово, <b>' + escapeHtml(nm) + '</b>! Ждём вас <b>' + escapeHtml(formatRu(dateI.value)) +
+        '</b> в <b>' + escapeHtml(form.elements['time'].value) + '</b>.';
       form.hidden = true;
       success.hidden = false;
       success.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
