@@ -6,33 +6,64 @@
 (function () {
   'use strict';
 
-  /* ---- Мобильное меню ---- */
+  /* ---- Мобильное меню (оверлей на весь экран) ---- */
   var burger = document.getElementById('burger');
   var nav = document.getElementById('nav');
   if (burger && nav) {
+    var root = document.documentElement;
     var toggleMenu = function (open) {
       var isOpen = open === undefined ? !nav.classList.contains('open') : open;
       nav.classList.toggle('open', isOpen);
       burger.classList.toggle('open', isOpen);
       burger.setAttribute('aria-expanded', String(isOpen));
-      document.body.style.overflow = isOpen ? 'hidden' : '';
+      burger.setAttribute('aria-label', isOpen ? 'Закрыть меню' : 'Открыть меню');
+      root.classList.toggle('menu-open', isOpen); // блокирует прокрутку страницы
     };
     burger.addEventListener('click', function () { toggleMenu(); });
     nav.querySelectorAll('a').forEach(function (a) {
       a.addEventListener('click', function () { toggleMenu(false); });
     });
-    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') toggleMenu(false); });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && nav.classList.contains('open')) { toggleMenu(false); burger.focus(); }
+    });
+    // при расширении окна до десктопа меню сбрасывается
+    window.addEventListener('resize', function () {
+      if (window.innerWidth > 900 && nav.classList.contains('open')) toggleMenu(false);
+    });
   }
 
   /* ---- Появление при скролле ---- */
   var reveals = document.querySelectorAll('.reveal');
-  if ('IntersectionObserver' in window && reveals.length) {
-    var io = new IntersectionObserver(function (entries, obs) {
-      entries.forEach(function (en) {
-        if (en.isIntersecting) { en.target.classList.add('is-visible'); obs.unobserve(en.target); }
-      });
-    }, { threshold: 0.14, rootMargin: '0px 0px -60px 0px' });
+  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if ('IntersectionObserver' in window && reveals.length && !reduceMotion) {
+    var pending = Array.prototype.slice.call(reveals);
+    var show = function (el) {
+      el.classList.add('is-visible');
+      io.unobserve(el);
+      var k = pending.indexOf(el);
+      if (k !== -1) pending.splice(k, 1);
+    };
+    // срабатывает заранее: нижняя граница области наблюдения сдвинута на 15% вниз
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) { if (en.isIntersecting) show(en.target); });
+    }, { threshold: 0, rootMargin: '0px 0px 15% 0px' });
     reveals.forEach(function (el) { io.observe(el); });
+
+    // страховка при быстрой прокрутке: всё, что выше нижнего края экрана, показываем сразу
+    var ticking = false;
+    var sweep = function () {
+      ticking = false;
+      var edge = window.innerHeight;
+      pending.slice().forEach(function (el) {
+        if (el.getBoundingClientRect().top < edge) show(el);
+      });
+    };
+    var onScroll = function () {
+      if (!ticking) { ticking = true; window.requestAnimationFrame(sweep); }
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    sweep();
   } else {
     reveals.forEach(function (el) { el.classList.add('is-visible'); });
   }
@@ -115,6 +146,7 @@
     function setError(input, show, msg) {
       if (!input) return;
       input.classList.toggle('invalid', show);
+      input.setAttribute('aria-invalid', show ? 'true' : 'false');
       var err = form.querySelector('[data-error="' + input.name + '"]');
       if (err) {
         if (show && msg) err.textContent = msg;
